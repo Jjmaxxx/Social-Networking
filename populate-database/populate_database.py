@@ -30,7 +30,7 @@ def populate_database(data_csv, follows_csv):
                 session.run(
                     """
                     MATCH (u1:User {username: $follower}), (u2:User {username: $followed})
-                    MERGE (u1)-[:FOLLOW]->(u2)
+                    CREATE (u1)-[:FOLLOWS]->(u2)
                     """,
                     follower=row['Follower'], followed=row['Followed']
                 )
