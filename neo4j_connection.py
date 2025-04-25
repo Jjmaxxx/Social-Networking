@@ -11,12 +11,52 @@ class Neo4jConnection:
     def close(self):
         self.driver.close()
 
-    # example method
     def create_user(self, user_data):
-        query = """
-                CREATE (u:User {name: $name, username: $username, password: $password, email: $email})
-                RETURN u
-                """
+        check_query = """
+            MATCH (u:User)
+            WHERE u.username = $username OR u.email = $email
+            RETURN u
+        """
+        create_query = """
+            CREATE (u:User {name: $name, username: $username, password: $password, email: $email})
+            RETURN u
+        """
         with self.driver.session() as session:
-            result = session.run(query, user_data)
-            return [record['u'] for record in result]
+            # Check for existing user
+            existing = session.run(check_query, {
+                "username": user_data["username"],
+                "email": user_data["email"]
+            })
+            if existing.peek():
+                return None 
+
+            result = session.run(create_query, user_data)
+            return [record["u"] for record in result]
+        
+    def authenticate_user(self, username, password):
+        query = """
+        MATCH (u:User {username: $username, password: $password})
+        RETURN u
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username=username, password=password)
+            record = result.single()
+            return record["u"] if record else None
+
+    def get_profile(self, username):
+        query = """
+        MATCH (u:User {username: $username})
+        RETURN u.name AS name, u.email AS email, u.username AS username, u.bio AS bio
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username=username)
+            return result.single()
+
+    def update_profile(self, username, new_name, new_bio):
+        query = """
+        MATCH (u:User {username: $username})
+        SET u.name = $new_name, u.bio = $new_bio
+        RETURN u
+        """
+        with self.driver.session() as session:
+            session.run(query, username=username, new_name=new_name, new_bio=new_bio)
