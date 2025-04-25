@@ -26,3 +26,11 @@ Run populate_database.py which is found in the populate-database directory
 cd populate-database
 python populate_database.py
 ```
+
+## Running the interface
+
+Ensure you are in the root directory and run interface.py
+
+```bash
+python interface.py
+```
