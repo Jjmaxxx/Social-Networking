@@ -66,17 +66,18 @@ def updateProfile(ctx: Context):
     print("Profile updated.")
 
 
-def guest_menu(ctx: Optional[Context]) -> Tuple[Optional[Context], bool]:
+def guest_menu(_: Context) -> Tuple[Optional[Context], bool]:
     print("1. Register")
     print("2. Login")
-    print("3. Exit")
+    print("9. Exit")
+    ctx = None
 
     match input("Choose an option: "):
         case "1":
             Register()
         case "2":
             ctx = Login()
-        case "3":
+        case "9":
             print("Exiting the program.")
             return None, False
         case _:
@@ -85,10 +86,57 @@ def guest_menu(ctx: Optional[Context]) -> Tuple[Optional[Context], bool]:
     return ctx, True
 
 
+def searchUser(ctx: Context) -> Tuple[Optional[Context], bool]:
+    search_term = input("Enter the name/username of the user you want to search for: ")
+    users = Neo4jConnection.get_instance().search_users(search_term)
+
+    if users is None:
+        print("Failed to retrieve users.")
+        return ctx, True
+
+    if len(users) == 0:
+        print("No users found.")
+        return ctx, True
+
+    for user in users:
+        print("\n--- User Profile ---")
+        print("Name:", user["name"])
+        print("Username:", user["username"])
+        print("Email:", user["email"])
+        print("Bio:", user["bio"])
+
+    return ctx, True
+
+
+def viewMostPopularUsers(ctx: Context) -> Tuple[Optional[Context], bool]:
+    print("Fetching most popular users...")
+    users = Neo4jConnection.get_instance().get_most_popular_users(3)
+
+    if users is None:
+        print("Failed to retrieve users.")
+        return ctx, True
+
+    if len(users) == 0:
+        print("No users found.")
+        return ctx, True
+
+    for user in users:
+        print("\n--- User Profile ---")
+        print("Name:", user["name"])
+        print("Username:", user["username"])
+        print("Email:", user["email"])
+        print("Bio:", user["bio"])
+        print("Followers:", user["followers_count"])
+
+    return ctx, True
+
+
 def user_menu(ctx: Context) -> Tuple[Optional[Context], bool]:
     print("1. View Profile")
     print("2. Edit Profile")
-    print("3. Logout")
+    print("3. Search User")
+    print("4. View Most Popular Users")
+    print("9. Logout")
 
     match input("Choose an option: "):
         case "1":
@@ -96,6 +144,10 @@ def user_menu(ctx: Context) -> Tuple[Optional[Context], bool]:
         case "2":
             updateProfile(ctx)
         case "3":
+            searchUser(ctx)
+        case "4":
+            viewMostPopularUsers(ctx)
+        case "9":
             print("Logging out...")
             return None, True
         case _:
@@ -123,4 +175,4 @@ if __name__ == "__main__":
         if not continue_program:
             break
 
-        input('Press Enter to continue...')
+        input("Press Enter to continue...")
