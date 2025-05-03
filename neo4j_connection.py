@@ -7,7 +7,15 @@ PASSWORD = "password"
 class Neo4jConnection:
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=(USERNAME, PASSWORD))
+
+    _instance = None
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = Neo4jConnection()
+        return cls._instance
     
+
     def close(self):
         self.driver.close()
 
