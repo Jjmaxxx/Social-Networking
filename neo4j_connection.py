@@ -7,7 +7,16 @@ PASSWORD = "password"
 class Neo4jConnection:
     def __init__(self):
         self.driver = GraphDatabase.driver(NEO4J_URI, auth=(USERNAME, PASSWORD))
+
+    _instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = Neo4jConnection()
+        return cls._instance
     
+
     def close(self):
         self.driver.close()
 
@@ -60,3 +69,24 @@ class Neo4jConnection:
         """
         with self.driver.session() as session:
             session.run(query, username=username, new_name=new_name, new_bio=new_bio)
+    
+    def search_users(self, search_term):
+        query = """
+        MATCH (u:User)
+        WHERE u.username CONTAINS $search_term OR u.name CONTAINS $search_term
+        RETURN u.username AS username, u.name AS name, u.bio AS bio, u.email AS email
+        """
+        with self.driver.session() as session:
+            result = session.run(query, search_term=search_term)
+            return set([record for record in result])
+
+    def get_most_popular_users(self, limit=3):
+        query = """
+        MATCH (u:User)<-[:FOLLOWS]-(f:User)
+        RETURN u.username AS username, COUNT(f) AS followers_count, u.name AS name, u.bio AS bio, u.email AS email
+        ORDER BY followers_count DESC
+        LIMIT $limit
+        """
+        with self.driver.session() as session:
+            result = session.run(query, limit=limit)
+            return set([record for record in result])
