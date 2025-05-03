@@ -90,3 +90,70 @@ class Neo4jConnection:
         with self.driver.session() as session:
             result = session.run(query, limit=limit)
             return set([record for record in result])
+
+    def follow_user(self, current_username, target_username):
+        # Create a FOLLOWS relationship from the current user to the target user.
+        query = """
+        MATCH (u1:User {username: $current_username}), (u2:User {username: $target_username})
+        WHERE NOT (u1)-[:FOLLOWS]->(u2) AND u1 <> u2
+        CREATE (u1)-[:FOLLOWS]->(u2)
+        RETURN u1, u2
+        """
+        with self.driver.session() as session:
+            result = session.run(query, current_username=current_username, target_username=target_username)
+            return result.single() is not None
+
+    def unfollow_user(self, current_username, target_username):
+        # Remove a FOLLOWS relationship from the current user to the target user.
+        query = """
+        MATCH (u1:User {username: $current_username})-[r:FOLLOWS]->(u2:User {username: $target_username})
+        DELETE r
+        RETURN u1, u2
+        """
+        with self.driver.session() as session:
+            result = session.run(query, current_username=current_username, target_username=target_username)
+            return result.single() is not None
+
+    def get_following(self, username):
+        # Get a list of users that the current user follows.
+        query = """
+        MATCH (u:User {username: $username})-[:FOLLOWS]->(followed)
+        RETURN followed.username as username, followed.name as name
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username=username)
+            return [record for record in result]
+
+    def get_followers(self, username):
+        # Get a list of users that follow the current user.
+        query = """
+        MATCH (follower)-[:FOLLOWS]->(u:User {username: $username})
+        RETURN follower.username as username, follower.name as name
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username=username)
+            return [record for record in result]
+
+    def get_mutual_connections(self, username1, username2):
+        # Get a list of users that both username1 and username2 follow.
+        query = """
+        MATCH (u1:User {username: $username1})-[:FOLLOWS]->(mutual)<-[:FOLLOWS]-(u2:User {username: $username2})
+        RETURN mutual.username as username, mutual.name as name
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username1=username1, username2=username2)
+            return [record for record in result]
+
+    def get_friend_recommendations(self, username, limit=10):
+        # Get friend recommendations based on common connections.
+        query = """
+        MATCH (u:User {username: $username})-[:FOLLOWS]->()-[:FOLLOWS]->(recommendation)
+        WHERE NOT (u)-[:FOLLOWS]->(recommendation) AND u.username <> recommendation.username
+        RETURN recommendation.username as username, recommendation.name as name, 
+               count(*) as common_connections
+        ORDER BY common_connections DESC
+        LIMIT $limit
+        """
+        with self.driver.session() as session:
+            result = session.run(query, username=username, limit=limit)
+            return [record for record in result]
